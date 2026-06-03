@@ -8,20 +8,44 @@
 #define PORT 8888
 #define BUFSIZE 1024
 
-int main() {
+int main(int argc, char *argv[]) {
     int fd;
     struct sockaddr_in server_addr;
-    char *mensaje = "¡Hola desde el cliente UDP!";
     char buffer[BUFSIZE];
     socklen_t server_len = sizeof(server_addr);
 
-    // 1. Crear el socket UDP
+    // 1. VALIDACIÓN: Controlar que haya al menos un argumento
+    if (argc < 2) {
+        fprintf(stderr, "Uso: %s hola como estas\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    // 2. CONCATENACIÓN: Unificar todos los argumentos en el buffer de mensaje
+    char mensaje[BUFSIZE];
+    memset(mensaje, 0, sizeof(mensaje)); // Limpiamos el buffer
+
+    for (int i = 1; i < argc; i++) {
+        // Controlar que no desbordemos el buffer del mensaje
+        if (strlen(mensaje) + strlen(argv[i]) + 2 > BUFSIZE) {
+            fprintf(stderr, "Error: El mensaje es demasiado largo.\n");
+            break;
+        }
+        
+        strcat(mensaje, argv[i]);
+        
+        // Agregamos un espacio después de cada palabra, excepto en la última
+        if (i < argc - 1) {
+            strcat(mensaje, " ");
+        }
+    }
+
+    // 3. Crear el socket UDP
     if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
         perror("Error en socket");
         exit(EXIT_FAILURE);
     }
 
-    // 2. Configurar la dirección del servidor de destino
+    // 4. Configurar la dirección del servidor de destino
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(PORT);
@@ -31,12 +55,12 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    // 3. Enviar mensaje al servidor
-    printf("Enviando mensaje al servidor...\n");
+    // 5. Enviar el mensaje unificado al servidor
+    printf("Enviando mensaje al servidor: \"%s\"\n", mensaje);
     sendto(fd, mensaje, strlen(mensaje), 0, 
            (struct sockaddr *)&server_addr, server_len);
 
-    // 4. Recibir la respuesta del servidor (Eco)
+    // 6. Recibir la respuesta del servidor (Eco)
     ssize_t bytes_received = recvfrom(fd, buffer, BUFSIZE - 1, 0, 
                                       (struct sockaddr *)&server_addr, &server_len);
     if (bytes_received < 0) {
