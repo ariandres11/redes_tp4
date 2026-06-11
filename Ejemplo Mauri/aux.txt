@@ -1,0 +1,45 @@
+Actúa como arquitecto de software y experto en redes.
+
+Necesito diseñar un protocolo de aplicación para un Trabajo Práctico universitario de Redes y Programación de Sockets.
+
+Restricciones:
+
+Servidor implementado en C.
+Cliente implementado en Python.
+Comunicación TCP.
+Arquitectura cliente-servidor.
+Múltiples clientes simultáneos.
+Cliente por terminal.
+Chat privado entre usuarios.
+Chat general (broadcast).
+Transferencia simple de archivos.
+Lista de usuarios conectados.
+Desconexión controlada.
+Manejo de errores.
+
+Diseña un protocolo de texto plano delimitado por el carácter "-" y documenta:
+
+Objetivo del protocolo.
+Formato general de los mensajes.
+Comandos soportados:
+    LOGIN
+    LOGOUT
+    LIST
+    MSG
+    BROADCAST
+    FILE
+    ACK
+    ERROR
+    PING
+    PONG
+Formato exacto de cada mensaje.
+Ejemplos de uso.
+Respuestas esperadas del servidor.
+Flujo de autenticación.
+Flujo de envío de mensajes.
+Flujo de transferencia de archivos.
+Códigos de error.
+Diagrama textual de secuencia.
+Consideraciones de seguridad y validación.
+
+La salida debe estar en formato Markdown y servir como documentación suficiente para que otro desarrollador implemente cliente o servidor sin leer el código fuente.
