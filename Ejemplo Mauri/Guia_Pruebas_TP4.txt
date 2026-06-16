@@ -1,0 +1,59 @@
+
+GUÍA DE PRUEBAS - TP4 CHAT TCP (SERVIDOR C + CLIENTE PYTHON)
+
+1. COMPILAR Y EJECUTAR EL SERVIDOR
+- make
+- ./servidor
+
+2. INICIAR DOS CLIENTES
+Terminal 2:
+python3 cliente.py
+IP: localhost
+Puerto: 5000
+Usuario: alice
+
+Terminal 3:
+python3 cliente.py
+IP: localhost
+Puerto: 5000
+Usuario: bob
+
+3. PROBAR LISTA DE USUARIOS
+/list
+
+4. PROBAR MENSAJES PRIVADOS
+/msg bob Hola Bob
+
+5. PROBAR BROADCAST
+/broadcast Hola a todos
+
+6. PROBAR PING
+/ping
+
+7. PROBAR ENVÍO DE ARCHIVOS
+/sendfile bob test.txt
+
+Verificar en carpeta de usuario:
+downloads/test.txt
+
+8. PROBAR USUARIO INEXISTENTE
+/msg juan Hola
+
+Esperar:
+ERROR|103|Usuario no conectado
+
+9. PROBAR LOGOUT
+/logout
+
+10. PROBAR DESCONEXIÓN DEL SERVIDOR
+Ctrl+C sobre el servidor
+
+CHECKLIST FINAL
+[ ] LOGIN
+[ ] LIST
+[ ] MSG
+[ ] BROADCAST
+[ ] PING/PONG
+[ ] FILE
+[ ] LOGOUT
+[ ] Errores
