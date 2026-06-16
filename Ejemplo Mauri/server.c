@@ -17,6 +17,78 @@
 #define PORT 5000
 #define BACKLOG 10
 #define BUF_SIZE 4096
+#define FILE_MAX_SIZE 10485760
+#define FILE_BUFFER_SIZE 4096
+
+static int transfer_file_stream(int srcfd, int destfd, long filesize) {
+    char buffer[FILE_BUFFER_SIZE];
+    long remaining = filesize;
+
+    while (remaining > 0) {
+        ssize_t to_read = remaining < FILE_BUFFER_SIZE ? remaining : FILE_BUFFER_SIZE;
+        ssize_t n = recv(srcfd, buffer, to_read, 0);
+        if (n <= 0) {
+            return -1;
+        }
+
+        ssize_t sent = send_all(destfd, buffer, n);
+        if (sent != n) {
+            return -1;
+        }
+
+        remaining -= n;
+    }
+    return 0;
+}
+
+static int handle_file_request(int clientfd, const char *sender, char *dest, char *filename, char *filesize_str) {
+    if (!sender) {
+        send_linef(clientfd, "ERROR|%d|Usuario no autenticado", ERR_NOT_AUTHENTICATED);
+        return -1;
+    }
+    if (!dest || !filename || !filesize_str) {
+        send_linef(clientfd, "ERROR|%d|Formato de mensaje inválido", ERR_INVALID_FORMAT);
+        return -1;
+    }
+
+    char *endptr = NULL;
+    long filesize = strtol(filesize_str, &endptr, 10);
+    if (endptr == NULL || *endptr != '\0' || filesize < 0) {
+        send_linef(clientfd, "ERROR|%d|Formato de mensaje inválido", ERR_INVALID_FORMAT);
+        return -1;
+    }
+    if (filesize > FILE_MAX_SIZE) {
+        send_linef(clientfd, "ERROR|%d|Archivo excede tamaño máximo", ERR_FILE_TOO_LARGE);
+        return -1;
+    }
+
+    int destfd = user_sock_by_name(dest);
+    if (destfd < 0) {
+        send_linef(clientfd, "ERROR|%d|Usuario no conectado", ERR_UNKNOWN_USER);
+        return -1;
+    }
+
+    if (send_linef(clientfd, "ACK|FILE_START") != 0) {
+        send_linef(clientfd, "ERROR|%d|Transferencia fallida", ERR_TRANSFER);
+        return -1;
+    }
+
+    if (send_linef(destfd, "FILEFROM|%s|%s|%ld", sender, filename, filesize) != 0) {
+        send_linef(clientfd, "ERROR|%d|Transferencia fallida", ERR_TRANSFER);
+        return -1;
+    }
+
+    if (transfer_file_stream(clientfd, destfd, filesize) != 0) {
+        send_linef(clientfd, "ERROR|%d|Transferencia fallida", ERR_TRANSFER);
+        return -1;
+    }
+
+    if (send_linef(clientfd, "ACK|FILE_COMPLETE") != 0) {
+        return -1;
+    }
+
+    return 0;
+}
 
 // Cada hilo cliente ejecuta esta función
 void *client_thread(void *arg) {
@@ -137,6 +209,12 @@ void *client_thread(void *arg) {
                         send_broadcast(sender, message);
                         send_linef(clientfd, "ACK|BROADCAST");
                     }
+                } else if (strcmp(cmd, "FILE") == 0) {
+                    const char *sender = user_name_by_sock(clientfd);
+                    char *dest = strtok_r(NULL, "|", &saveptr);
+                    char *filename = strtok_r(NULL, "|", &saveptr);
+                    char *filesize_str = saveptr;
+                    handle_file_request(clientfd, sender, dest, filename, filesize_str);
                 } else if (strcmp(cmd, "PING") == 0) {
                     send_linef(clientfd, "PONG");
                 } else {
