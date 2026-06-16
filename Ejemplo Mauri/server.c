@@ -126,6 +126,17 @@ void *client_thread(void *arg) {
                             send_linef(clientfd, "ACK|MSG");
                         }
                     }
+                } else if (strcmp(cmd, "BROADCAST") == 0) {
+                    const char *sender = user_name_by_sock(clientfd);
+                    char *message = saveptr;
+                    if (!sender) {
+                        send_linef(clientfd, "ERROR|%d|Usuario no autenticado", ERR_NOT_AUTHENTICATED);
+                    } else if (!message || *message == '\0') {
+                        send_linef(clientfd, "ERROR|%d|Formato de mensaje inválido", ERR_INVALID_FORMAT);
+                    } else {
+                        send_broadcast(sender, message);
+                        send_linef(clientfd, "ACK|BROADCAST");
+                    }
                 } else if (strcmp(cmd, "PING") == 0) {
                     send_linef(clientfd, "PONG");
                 } else {

@@ -56,6 +56,9 @@ ssize_t send_all(int sockfd, const void *buf, size_t len);
 // Enviar respuesta terminada en '\n'
 int send_linef(int sockfd, const char *fmt, ...);
 
+// Enviar broadcast a todos los usuarios conectados excepto el remitente.
+int send_broadcast(const char *sender, const char *message);
+
 // Manejar comando inválido (ayuda genérica)
 int handle_not_allowed(int sockfd);
 

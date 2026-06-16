@@ -132,6 +132,43 @@ int user_sock_by_name(const char *username) {
     return sockfd;
 }
 
+int send_broadcast(const char *sender, const char *message) {
+    int result = 0;
+    size_t cap = 0, count = 0;
+    int *fds = NULL;
+
+    pthread_mutex_lock(&users_mutex);
+    for (user_t *cur = users_head; cur; cur = cur->next) {
+        if (strcmp(cur->username, sender) != 0) {
+            if (count == cap) {
+                size_t new_cap = cap ? cap * 2 : 8;
+                int *tmp = realloc(fds, new_cap * sizeof(int));
+                if (!tmp) {
+                    result = -1;
+                    break;
+                }
+                fds = tmp;
+                cap = new_cap;
+            }
+            fds[count++] = cur->sockfd;
+        }
+    }
+    pthread_mutex_unlock(&users_mutex);
+
+    if (result < 0) {
+        free(fds);
+        return -1;
+    }
+
+    for (size_t i = 0; i < count; ++i) {
+        if (send_linef(fds[i], "BROADCASTFROM|%s|%s", sender, message) != 0) {
+            result = -1;
+        }
+    }
+    free(fds);
+    return result;
+}
+
 ssize_t send_all(int sockfd, const void *buf, size_t len) {
     size_t total = 0;
     const char *p = buf;
