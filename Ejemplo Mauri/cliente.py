@@ -31,12 +31,15 @@ def print_help():
 class ReceiverThread(threading.Thread):
     """Hilo que recibe y procesa mensajes del servidor."""
 
-    def __init__(self, sock, stop_event, file_start_event, file_complete_event):
+    def __init__(
+        self, sock, stop_event, file_start_event, file_complete_event, username
+    ):
         super().__init__(daemon=True)
         self.sock = sock
         self.stop_event = stop_event
         self.file_start_event = file_start_event
         self.file_complete_event = file_complete_event
+        self.username = username
         self.text_buffer = b""
         self.binary_file = None
         self.binary_remaining = 0
@@ -77,14 +80,16 @@ class ReceiverThread(threading.Thread):
         while offset < len(data):
             if self.binary_file is not None:
                 to_write = min(len(data) - offset, self.binary_remaining)
-                chunk = data[offset:offset + to_write]
+                chunk = data[offset : offset + to_write]
                 self.binary_file.write(chunk)
                 offset += to_write
                 self.binary_remaining -= to_write
                 if self.binary_remaining == 0:
                     self.binary_file.close()
                     self.binary_file = None
-                    print(f"\n[INFO] Archivo recibido de {self.binary_sender}: {self.binary_filename}")
+                    print(
+                        f"\n[INFO] Archivo recibido de {self.binary_sender}: {self.binary_filename}"
+                    )
                     print_prompt()
                     self.binary_sender = ""
                     self.binary_filename = ""
@@ -123,7 +128,10 @@ class ReceiverThread(threading.Thread):
         elif command == "ACK" and len(parts) >= 2:
             subcommand = parts[1].upper()
             if subcommand == "LOGIN":
-                print("\n[INFO] Login aceptado.")
+                print("\n[INFO] ¡Login exitoso! Ya estás conectado al chat.")
+                print(
+                    "[INFO] Escribe comandos para interactuar (ej. /help, /list, /broadcast hola)."
+                )
             elif subcommand == "LOGOUT":
                 print("\n[INFO] Logout aceptado. Cerrando cliente.")
                 self.stop_event.set()
@@ -171,15 +179,16 @@ class ReceiverThread(threading.Thread):
             print_prompt()
             return
 
-        if not os.path.isdir(DOWNLOAD_DIR):
+        user_download_dir = f"downloads_{self.username}"
+        if not os.path.isdir(user_download_dir):
             try:
-                os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+                os.makedirs(user_download_dir, exist_ok=True)
             except OSError as exc:
                 print(f"\n[ERROR] No se pudo crear el directorio de descargas: {exc}")
                 print_prompt()
                 return
 
-        filepath = os.path.join(DOWNLOAD_DIR, filename)
+        filepath = os.path.join(user_download_dir, filename)
         try:
             self.binary_file = open(filepath, "wb")
         except OSError as exc:
@@ -229,7 +238,9 @@ def send_line(sock, line):
     sock.sendall(data)
 
 
-def send_file(sock, dest_user, file_path, file_start_event, file_complete_event, stop_event):
+def send_file(
+    sock, dest_user, file_path, file_start_event, file_complete_event, stop_event
+):
     """Envía un archivo al servidor siguiendo el protocolo FILE."""
     if not os.path.isfile(file_path):
         print(f"[ERROR] El archivo no existe: {file_path}")
@@ -305,11 +316,14 @@ def main():
     file_start_event = threading.Event()
     file_complete_event = threading.Event()
 
-    receiver = ReceiverThread(sock, stop_event, file_start_event, file_complete_event)
+    receiver = ReceiverThread(
+        sock, stop_event, file_start_event, file_complete_event, username
+    )
     receiver.start()
 
     try:
         send_line(sock, f"LOGIN|{username}")
+        send_line(sock, "LIST")  # Solicitar usuarios tras conectar
     except OSError as exc:
         print(f"[ERROR] No se pudo enviar LOGIN: {exc}")
         stop_event.set()
@@ -350,7 +364,7 @@ def main():
                 if len(parts) < 2:
                     print("[ERROR] Uso: /broadcast mensaje")
                     continue
-                message = line[len("/broadcast "):].strip()
+                message = line[len("/broadcast ") :].strip()
                 if not message:
                     print("[ERROR] El mensaje no puede estar vacío.")
                     continue
@@ -377,11 +391,20 @@ def main():
                     continue
                 dest_user = parts[1]
                 file_path = parts[2]
-                send_file(sock, dest_user, file_path, file_start_event, file_complete_event, stop_event)
+                send_file(
+                    sock,
+                    dest_user,
+                    file_path,
+                    file_start_event,
+                    file_complete_event,
+                    stop_event,
+                )
             elif command == "/help":
                 print_help()
             else:
-                print("[ERROR] Comando desconocido. Escriba /help para ver los comandos.")
+                print(
+                    "[ERROR] Comando desconocido. Escriba /help para ver los comandos."
+                )
         else:
             print("[ERROR] Comando inválido. Todos los comandos comienzan con '/'.")
 
